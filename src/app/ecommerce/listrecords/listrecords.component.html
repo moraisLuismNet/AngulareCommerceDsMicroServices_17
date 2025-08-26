@@ -15,11 +15,6 @@
           <small>Sign in to interact with the cart</small>
         </div>
       }
-      @if (isLoggedIn() && cartEnabled === false) {
-        <div class="alert alert-warning p-2 ml-2">
-          <small>The cart is temporarily disabled</small>
-        </div>
-      }
       <p-table
         [value]="filteredRecords"
         [paginator]="true"
@@ -31,7 +26,7 @@
       >
         <ng-template pTemplate="header">
           <tr>
-            <th>Photo</th>
+            <th></th>
             <th style="font-size: 15px" pSortableColumn="titleRecord">
               Title <p-sortIcon field="titleRecord"></p-sortIcon>
             </th>
