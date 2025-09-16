@@ -140,11 +140,11 @@ export class OrdersComponent implements OnDestroy {
     
     const searchTerm = this.searchText.toLowerCase().trim();
     this.filteredOrders = this.orders.filter(order => {
-      // Buscar por fecha
+      // Search by date
       const orderDate = new Date(order.orderDate).toLocaleDateString().toLowerCase();
-      // Buscar por método de pago
+      // Search by payment method
       const paymentMethod = order.paymentMethod?.toLowerCase() || '';
-      // Buscar por monto total
+      // Search by total amount
       const total = order.total?.toString() || '';
       
       return orderDate.includes(searchTerm) || 
