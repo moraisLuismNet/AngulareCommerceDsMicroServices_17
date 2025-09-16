@@ -1,4 +1,4 @@
-import { Component, OnDestroy, afterNextRender, afterRender, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnDestroy, afterNextRender, afterRender, inject, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -9,6 +9,7 @@ import { takeUntil } from 'rxjs/operators';
 // PrimeNG Modules
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
+import { TooltipModule } from 'primeng/tooltip';
 
 // Services
 import { OrderService } from '../services/order.service';
@@ -25,10 +26,10 @@ import { IOrder } from '../ecommerce.interface';
     CommonModule,
     FormsModule,
     TableModule,
-    ButtonModule
+    ButtonModule,
+    TooltipModule
   ],
-  templateUrl: './orders.component.html',
-  styleUrls: ['./orders.component.css']
+  templateUrl: './orders.component.html'
 })
 export class OrdersComponent implements OnDestroy {
   orders: IOrder[] = [];
@@ -42,6 +43,7 @@ export class OrdersComponent implements OnDestroy {
   
   private orderService = inject(OrderService);
   private userService = inject(UserService);
+  private cdr = inject(ChangeDetectorRef);
 
   constructor() {
     // Use afterNextRender for one-time initialization after the component is created
@@ -71,14 +73,44 @@ export class OrdersComponent implements OnDestroy {
 
   loadOrders(email: string): void {
     this.loading = true;
+    console.log('Loading orders for email:', email);
+    
     this.orderService.getOrdersByUserEmail(email).subscribe({
       next: (orders) => {
-        this.orders = orders;
-        this.filteredOrders = [...orders];
+        console.log('Raw orders data from API:', JSON.parse(JSON.stringify(orders)));
+        
+        // Ensure orders is an array
+        const ordersArray = Array.isArray(orders) ? orders : [];
+        
+        // Log each order's structure
+        ordersArray.forEach((order, index) => {
+          console.log(`Order ${index + 1}:`, {
+            idOrder: order.idOrder,
+            orderDate: order.orderDate,
+            paymentMethod: order.paymentMethod,
+            total: order.total,
+            userEmail: order.userEmail,
+            orderDetailsCount: order.orderDetails ? (Array.isArray(order.orderDetails) ? order.orderDetails.length : 'Not an array') : 'No orderDetails',
+            orderDetailsType: typeof order.orderDetails
+          });
+        });
+        
+        this.orders = ordersArray;
+        this.filteredOrders = [...ordersArray];
+        
+        console.log('Processed orders:', this.orders);
+        console.log('Filtered orders:', this.filteredOrders);
+        
         this.loading = false;
+        this.cdr.detectChanges(); // Force change detection
       },
       error: (err) => {
-        console.error('Error loading orders:', err);
+        console.error('Error loading orders:', {
+          error: err,
+          status: err?.status,
+          message: err?.message,
+          url: err?.url
+        });
         this.orders = [];
         this.filteredOrders = [];
         this.loading = false;
@@ -101,9 +133,25 @@ export class OrdersComponent implements OnDestroy {
   }
 
   filterOrders() {
-    this.filteredOrders = this.orders.filter((order) =>
-      order.orderDate.toLowerCase().includes(this.searchText.toLowerCase())
-    );
+    if (!this.searchText || this.searchText.trim() === '') {
+      this.filteredOrders = [...this.orders];
+      return;
+    }
+    
+    const searchTerm = this.searchText.toLowerCase().trim();
+    this.filteredOrders = this.orders.filter(order => {
+      // Buscar por fecha
+      const orderDate = new Date(order.orderDate).toLocaleDateString().toLowerCase();
+      // Buscar por método de pago
+      const paymentMethod = order.paymentMethod?.toLowerCase() || '';
+      // Buscar por monto total
+      const total = order.total?.toString() || '';
+      
+      return orderDate.includes(searchTerm) || 
+             paymentMethod.includes(searchTerm) ||
+             total.includes(searchTerm);
+    });
+    
   }
 
   onSearchChange() {

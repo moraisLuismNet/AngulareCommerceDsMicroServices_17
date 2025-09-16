@@ -44,7 +44,6 @@ import { IRecord } from "../ecommerce.interface";
     ConfirmDialogModule
   ],
   templateUrl: "./records.component.html",
-  styleUrls: ["./records.component.css"],
   providers: [ConfirmationService],
 })
 export class RecordsComponent implements OnInit, OnDestroy {
@@ -88,9 +87,20 @@ export class RecordsComponent implements OnInit, OnDestroy {
   private cdr = inject(ChangeDetectorRef);
   
 
+  // Add this new method to handle group selection changes
+  onGroupChange(event: Event) {
+    const select = event.target as HTMLSelectElement;
+    if (select.value === '') {
+      this.record.groupId = null;
+    }
+  }
+
   ngOnInit(): void {
     this.getRecords();
     this.getGroups();
+    
+    // Initialize the form with a clean state
+    this.resetForm();
 
     // Subscribe to stock updates
     this.stockService.stockUpdate$
@@ -288,28 +298,49 @@ export class RecordsComponent implements OnInit, OnDestroy {
   }
 
   save() {
+    if (!this.record.titleRecord || !this.record.price || !this.record.stock) {
+      this.visibleError = true;
+      this.errorMessage = 'Please fill in all required fields';
+      return;
+    }
+
+    // Create a copy of the record to avoid modifying the original
+    const recordToSave = { ...this.record };
+
+    // Ensure groupId is a number or null
+    if (recordToSave.groupId === undefined) {
+      recordToSave.groupId = null;
+    }
+
     if (this.record.idRecord === 0) {
-      this.recordsService.addRecord(this.record).subscribe({
+      this.recordsService.addRecord(recordToSave).subscribe({
         next: (data) => {
           this.visibleError = false;
-          this.form.reset();
+          this.resetForm();
           this.getRecords();
         },
         error: (err) => {
-          console.log(err);
+          console.error('Error adding record:', {
+            error: err,
+            errorDetails: err?.error,
+            status: err?.status,
+            statusText: err?.statusText,
+            headers: err?.headers,
+            url: err?.url
+          });
           this.visibleError = true;
           this.controlError(err);
         },
       });
     } else {
-      this.recordsService.updateRecord(this.record).subscribe({
+      this.recordsService.updateRecord(recordToSave).subscribe({
         next: (data) => {
           this.visibleError = false;
-          this.cancelEdition();
-          this.form.reset();
+          this.resetForm();
           this.getRecords();
         },
         error: (err) => {
+          console.error('Error updating record:', err);
           this.visibleError = true;
           this.controlError(err);
         },
@@ -364,7 +395,8 @@ export class RecordsComponent implements OnInit, OnDestroy {
     return url.split("/").pop() || "";
   }
 
-  cancelEdition() {
+  // Reset the form to its initial state
+  private resetForm() {
     this.record = {
       idRecord: 0,
       titleRecord: "",
@@ -379,15 +411,75 @@ export class RecordsComponent implements OnInit, OnDestroy {
       groupName: "",
       nameGroup: "",
     };
+
+    if (this.form) {
+      this.form.resetForm();
+      this.form.form.markAsPristine();
+      this.form.form.markAsUntouched();
+      this.cdr.detectChanges();
+    }
+  }
+
+  cancelEdition() {
+    this.resetForm();
   }
 
   controlError(err: any) {
+    console.error('Error details:', err);
+    
+    // Handle HTTP errors
+    if (err.status === 400) {
+      if (err.error && typeof err.error === 'object') {
+        // Handle validation errors
+        if (err.error.errors) {
+          const errorMessages = [];
+          for (const key in err.error.errors) {
+            if (err.error.errors[key]) {
+              errorMessages.push(...err.error.errors[key]);
+            }
+          }
+          this.errorMessage = errorMessages.join('\n');
+          return;
+        }
+        // Handle custom error messages
+        if (err.error.title) {
+          this.errorMessage = err.error.title;
+          return;
+        }
+      }
+      this.errorMessage = 'Invalid data. Please check your input and try again.';
+      return;
+    }
+    
+    if (err.status === 401) {
+      this.errorMessage = 'Unauthorized. Please log in again.';
+      return;
+    }
+    
+    if (err.status === 403) {
+      this.errorMessage = 'You do not have permission to perform this action.';
+      return;
+    }
+    
+    if (err.status === 404) {
+      this.errorMessage = 'The requested resource was not found.';
+      return;
+    }
+    
+    if (err.status >= 500) {
+      this.errorMessage = 'A server error occurred. Please try again later.';
+      return;
+    }
+    
+    // Handle other types of errors
     if (err.error && typeof err.error === "object" && err.error.message) {
       this.errorMessage = err.error.message;
     } else if (typeof err.error === "string") {
       this.errorMessage = err.error;
+    } else if (err.message) {
+      this.errorMessage = err.message;
     } else {
-      this.errorMessage = "An unexpected error has occurred";
+      this.errorMessage = 'An unexpected error occurred. Please try again.';
     }
   }
 

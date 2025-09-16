@@ -6,6 +6,22 @@ import { AuthGuard } from "src/app/guards/auth-guard.service";
 import { IRecord } from "../ecommerce.interface";
 import { StockService } from "./stock.service";
 
+// Interface that matches the API response
+interface RecordItemExtDTO {
+  idRecord: number;
+  titleRecord: string;
+  price: number;
+  stock: number;
+  discontinued: boolean;
+  yearOfPublication?: number | null;
+  groupId?: number | null;
+  groupName?: string | null;
+  musicGenreId?: number | null;
+  musicGenreName?: string | null;
+  imageRecord?: string | null;
+  photo?: string | null;
+}
+
 @Injectable({
   providedIn: "root",
 })
@@ -121,65 +137,162 @@ export class RecordsService {
 
   addRecord(record: IRecord): Observable<IRecord> {
     const headers = this.getHeaders();
-    const formData = new FormData();
-    formData.append("titleRecord", record.titleRecord);
-    if (record.yearOfPublication !== null) {
-      formData.append("yearOfPublication", record.yearOfPublication.toString());
-    } else {
-      formData.append("yearOfPublication", "");
+    
+    if (!record.groupId) {
+      throw new Error('Group is required');
     }
-    formData.append("photo", record.photo!);
-    formData.append("price", record.price.toString());
-    formData.append("stock", record.stock.toString());
-    formData.append("discontinued", record.discontinued ? "true" : "false");
-    formData.append("groupId", record.groupId?.toString()!);
 
+    // Create FormData to handle file uploads
+    const formData = new FormData();
+    formData.append('TitleRecord', record.titleRecord || '');
+    formData.append('Price', (record.price || 0).toString());
+    formData.append('Stock', (record.stock || 0).toString());
+    formData.append('Discontinued', record.discontinued ? 'true' : 'false');
+    formData.append('YearOfPublication', record.yearOfPublication?.toString() || '');
+    formData.append('GroupId', record.groupId.toString());
+    
+    // Add the photo file if it exists
+    if (record.photo instanceof File) {
+      formData.append('Photo', record.photo);
+    }
+    
+    // Remove the Content-Type header to let the browser set it with the correct boundary
+    const uploadHeaders = headers.delete('Content-Type');
+    
     return this.http
-      .post<any>(`${this.baseUrl}records`, formData, {
-        headers,
+      .post<RecordItemExtDTO>(`${this.baseUrl}records`, formData, {
+        headers: uploadHeaders,
+        observe: 'response'
       })
       .pipe(
-        map((response) => {
-          const newRecord = response.$values || {};
-          return newRecord;
+        tap({
+          error: (error) => {
+            console.error('HTTP Error Response:', {
+              status: error.status,
+              statusText: error.statusText,
+              error: error.error,
+              headers: error.headers,
+              url: error.url,
+              // Try to get more detailed error information
+              errorText: error.error?.errors || error.error?.detail || error.message
+            });
+            
+            // Log the complete error object for debugging
+            console.error('Complete error object:', error);
+            
+            // If we have validation errors, log them in a more readable format
+            if (error.error?.errors) {
+              console.error('Validation errors:');
+              Object.entries(error.error.errors).forEach(([key, value]) => {
+                console.error(`- ${key}:`, value);
+              });
+            }
+            
+            throw error;
+          }
         }),
-        tap((newRecord: IRecord) => {
-          this.stockService.notifyStockUpdate(
-            newRecord.idRecord,
-            newRecord.stock
-          );
+        map((response) => {
+          // Map the API response to IRecord
+          const apiRecord = response.body;
+          if (!apiRecord) {
+            throw new Error('No record data received from server');
+          }
+          return {
+            idRecord: apiRecord.idRecord,
+            titleRecord: apiRecord.titleRecord,
+            yearOfPublication: apiRecord.yearOfPublication || null,
+            price: apiRecord.price,
+            stock: apiRecord.stock,
+            discontinued: apiRecord.discontinued,
+            groupId: apiRecord.groupId || null,
+            groupName: apiRecord.groupName || '',
+            nameGroup: apiRecord.groupName || '',
+            imageRecord: apiRecord.imageRecord || null,
+            photo: null, // We'll handle file uploads separately if needed
+            photoName: apiRecord.photo ? 'photo.jpg' : null
+          } as unknown as IRecord;
+        }),
+        tap({
+          next: (newRecord: IRecord) => {
+            this.stockService.notifyStockUpdate(
+              newRecord.idRecord,
+              newRecord.stock
+            );
+          },
+          error: (error) => {
+            console.error('Error in addRecord pipeline:', {
+              error,
+              errorResponse: error?.error,
+              status: error?.status,
+              statusText: error?.statusText,
+              headers: error?.headers,
+              url: error?.url
+            });
+          }
         })
       );
   }
 
   updateRecord(record: IRecord): Observable<IRecord> {
-    const headers = new HttpHeaders({
-      Authorization: `Bearer ${this.authGuard.getToken()}`,
-    });
+    const headers = this.getHeaders();
+    
+    if (!record.groupId) {
+      throw new Error('Group is required');
+    }
+
+    // Create FormData to handle file uploads
     const formData = new FormData();
-    formData.append("titleRecord", record.titleRecord);
-    if (record.yearOfPublication !== null) {
-      formData.append("yearOfPublication", record.yearOfPublication.toString());
-    } else {
-      formData.append("yearOfPublication", "");
+    formData.append('IdRecord', record.idRecord.toString());
+    formData.append('TitleRecord', record.titleRecord || '');
+    formData.append('Price', (record.price || 0).toString());
+    formData.append('Stock', (record.stock || 0).toString());
+    formData.append('Discontinued', record.discontinued ? 'true' : 'false');
+    formData.append('YearOfPublication', record.yearOfPublication?.toString() || '');
+    formData.append('GroupId', record.groupId.toString());
+    
+    // Add the photo file if it exists and is a File object
+    if (record.photo instanceof File) {
+      formData.append('Photo', record.photo);
     }
-    formData.append("price", record.price.toString());
-    formData.append("stock", record.stock.toString());
-    formData.append("discontinued", record.discontinued ? "true" : "false");
-    formData.append("groupId", record.groupId?.toString()!);
-
-    if (record.photo) {
-      formData.append("photo", record.photo);
-    }
-
+    
+    // Remove the Content-Type header to let the browser set it with the correct boundary
+    const uploadHeaders = headers.delete('Content-Type');
+    
     return this.http
-      .put<any>(`${this.baseUrl}records/${record.idRecord}`, formData, {
-        headers,
+      .put<RecordItemExtDTO>(`${this.baseUrl}records/${record.idRecord}`, formData, {
+        headers: uploadHeaders,
+        observe: 'response'
       })
       .pipe(
+        tap({
+          error: (error) => {
+            console.error('Update Error:', {
+              status: error.status,
+              statusText: error.statusText,
+              error: error.error
+            });
+          }
+        }),
         map((response) => {
-          const updatedRecord = response.$values || {};
-          return updatedRecord;
+          // Map the API response to IRecord
+          const apiRecord = response.body;
+          if (!apiRecord) {
+            throw new Error('No record data received from server');
+          }
+          return {
+            idRecord: apiRecord.idRecord,
+            titleRecord: apiRecord.titleRecord,
+            yearOfPublication: apiRecord.yearOfPublication || null,
+            price: apiRecord.price,
+            stock: apiRecord.stock,
+            discontinued: apiRecord.discontinued,
+            groupId: apiRecord.groupId || null,
+            groupName: apiRecord.groupName || '',
+            nameGroup: apiRecord.groupName || '',
+            imageRecord: apiRecord.imageRecord || null,
+            photo: null, // We'll handle file uploads separately if needed
+            photoName: apiRecord.photo ? 'photo.jpg' : null
+          } as unknown as IRecord;
         }),
         tap((updatedRecord: IRecord) => {
           this.stockService.notifyStockUpdate(
@@ -307,13 +420,12 @@ export class RecordsService {
   getHeaders(): HttpHeaders {
     const token = this.authGuard.getToken();
     return new HttpHeaders({
+      'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
     });
   }
 
   decrementStock(idRecord: number): Observable<any> {
-    console.log(`[RecordsService] Decrementing stock for record ${idRecord}`);
     const headers = this.getHeaders();
     const amount = -1;
     return this.http
@@ -324,7 +436,6 @@ export class RecordsService {
       )
       .pipe(
         tap(() => {
-          console.log(`[RecordsService] Stock decremented for record ${idRecord}`);
           this.stockService.notifyStockUpdate(idRecord, amount);
         }),
         catchError((error) => {
@@ -335,7 +446,6 @@ export class RecordsService {
   }
 
   incrementStock(idRecord: number): Observable<any> {
-    console.log(`[RecordsService] Incrementing stock for record ${idRecord}`);
     const headers = this.getHeaders();
     const amount = 1;
     return this.http
@@ -346,7 +456,6 @@ export class RecordsService {
       )
       .pipe(
         tap(() => {
-          console.log(`[RecordsService] Stock incremented for record ${idRecord}`);
           this.stockService.notifyStockUpdate(idRecord, amount);
         }),
         catchError((error) => {

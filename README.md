@@ -21,27 +21,21 @@ AngulareCommerceDsMicroServices_17/
 │   │   │   ├───carts.component.html  
 │   │   │   └───carts.component.ts  
 │   │   ├───genres/  
-│   │   │   ├───genres.component.css  
 │   │   │   ├───genres.component.html    
 │   │   │   └───genres.component.ts  
 │   │   ├───groups/  
-│   │   │   ├───groups.component.css  
 │   │   │   ├───groups.component.html    
 │   │   │   └───groups.component.ts  
 │   │   ├───listgroups/  
-│   │   │   ├───listgroups.component.css  
 │   │   │   ├───listgroups.component.html    
 │   │   │   └───listgroups.component.ts  
 │   │   ├───listrecords/  
-│   │   │   ├───listrecords.component.css  
 │   │   │   ├───listrecords.component.html    
 │   │   │   └───listrecords.component.ts  
 │   │   ├───orders/  
-│   │   │   ├───orders.component.css   
 │   │   │   ├───orders.component.html  
 │   │   │   └───orders.component.ts  
 │   │   ├───records/  
-│   │   │   ├───records.component.css  
 │   │   │   ├───records.component.html    
 │   │   │   └───records.component.ts  
 │   │   ├───services/  
@@ -54,7 +48,6 @@ AngulareCommerceDsMicroServices_17/
 │   │   │   ├───stock.service.ts  
 │   │   │   └───users.service.ts  
 │   │   ├───users/  
-│   │   │   ├───users.component.css  
 │   │   │   ├───users.component.html    
 │   │   │   └───users.component.ts  
 │   │   ├───ecommerce.component.html  
@@ -78,7 +71,6 @@ AngulareCommerceDsMicroServices_17/
 │   │   │   ├───login.component.html  
 │   │   │   └───login.component.ts  
 │   │   ├───navbar/  
-│   │   │   ├───navbar.component.css   
 │   │   │   ├───navbar.component.html      
 │   │   │   └───navbar.component.ts  
 │   │   ├───register/  
@@ -94,6 +86,7 @@ AngulareCommerceDsMicroServices_17/
 ├───environments/  
 │   ├───environment.development.ts  
 │   └───environment.ts  
+├───main.ts    
 ├───angular.json  
 └───package.json  
 

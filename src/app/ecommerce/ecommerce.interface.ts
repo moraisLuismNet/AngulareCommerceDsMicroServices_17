@@ -11,7 +11,7 @@ export interface IGroup {
   photo?: File | null;
   photoName?: string | null;
   totalRecords?: number;
-  musicGenreId: number;
+  musicGenreId: number | null;
   musicGenreName: string;
   musicGenre: string;
 }
@@ -23,7 +23,7 @@ export interface IRecord {
   price: number;
   stock: number;
   discontinued: boolean;
-  groupId: number | null;
+  groupId: number | null | undefined;
   groupName: string;
   nameGroup: string;
   inCart?: boolean;

@@ -12,10 +12,11 @@
             required
             id="group"
             style="font-size: 0.9rem"
+            (change)="onGroupChange($event)"
           >
-            <option value="">Select a Group</option>
+            <option [ngValue]="null" selected>Select a Group</option>
             @for (group of groups; track group.idGroup) {
-              <option [value]="group.idGroup">{{ group.nameGroup }}</option>
+              <option [ngValue]="group.idGroup">{{ group.nameGroup }}</option>
             }
           </select>
         </div>

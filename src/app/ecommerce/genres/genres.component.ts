@@ -30,7 +30,6 @@ import { IGenre } from '../ecommerce.interface';
     ConfirmDialogModule
   ],
   templateUrl: './genres.component.html',
-  styleUrls: ['./genres.component.css'],
   providers: [ConfirmationService],
 })
 export class GenresComponent implements OnInit, OnDestroy {

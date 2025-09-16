@@ -35,7 +35,6 @@ import { IGroup } from '../ecommerce.interface';
     SharedModule
   ],
   templateUrl: './listgroups.component.html',
-  styleUrls: ['./listgroups.component.css'],
   providers: [ConfirmationService],
 })
 export class ListgroupsComponent implements OnInit, OnDestroy {
